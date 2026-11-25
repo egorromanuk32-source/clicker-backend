@@ -1,0 +1,48 @@
+const db = require('../../config/db');
+
+const PLAYER_ID = 1;
+
+const getPlayerStmt = db.prepare(
+  'SELECT id, balance, click_level, auto_level FROM players WHERE id = ?'
+);
+
+const updatePlayerStmt = db.prepare(`
+  UPDATE players
+  SET balance = ?, click_level = ?, auto_level = ?
+  WHERE id = ?
+`);
+
+function isValidNumber(value) {
+  return Number.isInteger(value) && value >= 0;
+}
+
+function loadPlayer(req, res) {
+  try {
+    const player = getPlayerStmt.get(PLAYER_ID);
+    res.json(player);
+  } catch (err) {
+    console.error('Load error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+function savePlayer(req, res) {
+  const { balance, click_level, auto_level } = req.body || {};
+
+  if (![balance, click_level, auto_level].every(isValidNumber)) {
+    return res.status(400).json({
+      success: false,
+      error: 'balance, click_level and auto_level must be non-negative integers',
+    });
+  }
+
+  try {
+    updatePlayerStmt.run(balance, click_level, auto_level, PLAYER_ID);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Save error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+module.exports = { loadPlayer, savePlayer };
